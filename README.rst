@@ -113,6 +113,22 @@ setting::
 
     AWS_REGION = 'us-east-1'
 
+S3 supports multiple calling formats for bucket URLs. For example, the bucket
+name may be called as a subdomain, or it may be called as a subdirectory. The
+issue with a subdomain call, which is the default in ``boto.s3``, is that SSL
+certificates of wildcarded subdomains are being deprecated for security, so
+HTTPS URLs with bucket subdomains may trigger browser warnings, or, in
+in some cases with Internet Explorer 10, hide the issue behind a connection
+error. Therefore, the default is to use the bucket name as a subdirectory,
+which is done by ``boto.s3.connection.OrdinaryCallingFormat``. To change this,
+set ``URL_CALLING_FORMAT`` to a string describing either a calling format in
+the ``boto.s3.connection`` module, or to a string of a full absolute import
+path (similar to Django middleware). For example, either of the following
+would suffice to use the default subdomain calling format, instead::
+
+    URL_CALLING_FORMAT = 'SubdomainCallingFormat'
+    URL_CALLING_FORMAT = 'boto.s3.connection.SubdomainCallingFormat'
+
 Using in models
 ---------------
 

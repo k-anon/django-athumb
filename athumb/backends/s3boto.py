@@ -16,8 +16,10 @@ from django.conf import settings
 from django.core.files.base import File
 from django.core.files.storage import Storage
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.importlib import import_module
 
 try:
+    import boto.s3.connection
     from boto.s3.connection import S3Connection
     from boto.exception import S3ResponseError
     from boto.s3.key import Key
@@ -54,6 +56,7 @@ GZIP_CONTENT_TYPES = getattr(settings, 'GZIP_CONTENT_TYPES', (
     'application/javascript',
     'application/x-javascript'
 ))
+URL_CALLING_FORMAT = getattr(settings, 'URL_CALLING_FORMAT', None)
 
 if IS_GZIPPED:
     from gzip import GzipFile
@@ -69,7 +72,8 @@ class S3BotoStorage(Storage):
                        headers=HEADERS, gzip=IS_GZIPPED,
                        gzip_content_types=GZIP_CONTENT_TYPES,
                        querystring_auth=QUERYSTRING_AUTH,
-                       force_no_ssl=False):
+                       force_no_ssl=False,
+                       calling_format=URL_CALLING_FORMAT):
         self.bucket_name = bucket
         self.bucket_cname = bucket_cname
         self.host = self._get_host(region)
@@ -86,8 +90,30 @@ class S3BotoStorage(Storage):
         if not access_key and not secret_key:
             access_key, secret_key = self._get_access_keys()
 
+        if calling_format:
+            try:
+                if '.' in calling_format:
+                    mod, klass = calling_format.rsplit('.', 1)
+                    mod = import_module(mod)
+                    calling_format = getattr(mod, klass)
+                else:
+                    calling_format = getattr(
+                        boto.s3.connection,
+                        calling_format
+                    )
+            except (AttributeError, ImportError):
+                raise ImproperlyConfigured(
+                    'CALLBACK_FORMAT_URL does not point to a correct import '
+                    'path or a class in s3.boto.connection.S3Connection.'
+                )
+        else:
+            calling_format = boto.s3.connection.OrdinaryCallingFormat
+
         self.connection = S3Connection(
-            access_key, secret_key, host=self.host,
+            access_key,
+            secret_key,
+            host=self.host,
+            calling_format=calling_format()
         )
 
     @property
