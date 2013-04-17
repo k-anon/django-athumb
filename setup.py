@@ -20,7 +20,7 @@ setup(
     requires=[
         'django',
         'boto',
-        'django-storages==1.1.8'
+        'storages'
         'pil'
     ],
     classifiers=[
